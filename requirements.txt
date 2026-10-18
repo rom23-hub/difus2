@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+httpx
+fpdf2
+supabase
