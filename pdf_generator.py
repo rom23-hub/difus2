@@ -194,11 +194,15 @@ def generar_pdf(datos: dict, informe: dict) -> bytes:
     ce = safe_float(datos.get('ce'), 0.0)
     porosidad = safe_float(datos.get('porosidad'), 0.0)
     p_disponible = safe_float(datos.get('p_disponible'), 0.0)
-    ca = safe_float(datos.get('ca'), 0.0)
-    mg = safe_float(datos.get('mg'), 0.0)
-    k = safe_float(datos.get('k'), 0.0)
-    na = safe_float(datos.get('na'), 0.0)
-    al_h = safe_float(datos.get('al_h'), 0.0)
+    # 🛡️ Usar valores corregidos si existen en el informe, sino fallback a los crudos de datos
+    ca = informe.get('ca_corregido', safe_float(datos.get('ca'), 0.0))
+    mg = informe.get('mg_corregido', safe_float(datos.get('mg'), 0.0))
+    k = informe.get('k_corregido', safe_float(datos.get('k'), 0.0))
+    na = informe.get('na_corregido', safe_float(datos.get('na'), 0.0))
+    al_h = informe.get('al_h_corregido', safe_float(datos.get('al_h'), 0.0))
+    
+    # Extraer la nota de conversión inteligente
+    nota_conversion = informe.get('nota_conversion', '')
     
     tipo_cal = safe_str(datos.get('tipo_cal'), 'Cal agricola (CaCO3)')
     prnt = safe_float(datos.get('prnt'), 100.0)
@@ -299,6 +303,7 @@ def generar_pdf(datos: dict, informe: dict) -> bytes:
     pdf.tabla_fila(['Porosidad', f'{porosidad}', '%'], anchos)
     pdf.tabla_fila(['P disponible', f'{p_disponible}', 'ppm (mg/kg)'], anchos)
     pdf.ln(3)
+
     pdf.subtitulo('Cationes base + acidez')
     anchos2 = [60, 60, 70]
     pdf.tabla_encabezado(['Cation', 'Valor', 'Unidad'], anchos2)
@@ -307,6 +312,13 @@ def generar_pdf(datos: dict, informe: dict) -> bytes:
     pdf.tabla_fila(['K+', f'{k}', 'meq/100g'], anchos2)
     pdf.tabla_fila(['Na+', f'{na}', 'meq/100g'], anchos2)
     pdf.tabla_fila(['Al3+ + H+', f'{al_h}', 'meq/100g'], anchos2)
+    
+    # 🛡️ NOTA DE CONVERSIÓN INTELIGENTE (Si aplica)
+    if nota_conversion:
+        pdf.ln(2)
+        pdf.alerta(nota_conversion, tipo='amarillo')  # Usa tu método existente que ya incluye ascii_safe()
+        pdf.ln(2)
+
     pdf.ln(3)
     pdf.subtitulo('Informacion de enmiendas')
     pdf.fila_datos('Tipo de cal:', tipo_cal, 60)
@@ -592,15 +604,13 @@ def generar_pdf(datos: dict, informe: dict) -> bytes:
     pdf.ln(3)
     pdf.set_font('Arial', 'B', 9)
     pdf.set_text_color(*VERDE_PRIMARIO)
-    pdf.cell(0, 5, ascii_safe('NOTA LEGAL Y DESCARGO DE RESPONSABILIDAD'), 0, 1, 'C')
+    pdf.cell(0, 5, ascii_safe('NOTA LEGAL Y RESPONSABILIDAD'), 0, 1, 'C')
     pdf.set_font('Arial', 'I', 8)
     pdf.set_text_color(*GRIS_SUAVE)
     nota_legal = (
-        'Las dosis y recomendaciones generadas son orientativas, basadas en metodos empiricos '
-        'y en los datos proporcionados por el usuario. Los valores son referenciales y deben '
-        'validarse con analisis foliar, ensayos locales y asesoria profesional in situ antes '
-        'de aplicar. Los resultados pueden variar segun condiciones climaticas, manejo, '
-        'plagas y precio de mercado. RIF: 503619694. Documento generado el ' + fecha + '.'
+        'Las dosis y recomendaciones generadas estan ajustadas en los datos proporcionados.' 
+        'Los resultados pueden variar segun condiciones climaticas pasado el tiempo del reporte.'
+        'RIF: 503619694. Documento generado el ' + fecha + '.'
     )
     pdf.multi_cell(0, 4, ascii_safe(nota_legal))
     
